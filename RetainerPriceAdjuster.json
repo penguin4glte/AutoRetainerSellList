@@ -1,0 +1,10 @@
+{
+    "Author": "YourName",
+    "Name": "Retainer Price Adjuster",
+    "InternalName": "RetainerPriceAdjuster",
+    "Punchline": "Automatically adjust retainer market listing prices to match lowest prices",
+    "Description": "Automatically adjusts your retainer's market listing prices by checking the market board and updating to the lowest price (HQ/NQ aware)",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 14,
+    "LoadPriority": 0
+}
