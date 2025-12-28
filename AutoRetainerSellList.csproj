@@ -13,7 +13,15 @@
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
         <AssemblyName>RetainerPriceAdjuster</AssemblyName>
         <Nullable>enable</Nullable>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="ECommons\**" />
+        <EmbeddedResource Remove="ECommons\**" />
+        <None Remove="ECommons\**" />
+    </ItemGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <OutputPath>bin/Release</OutputPath>
@@ -70,6 +78,14 @@
         </Reference>
         <Reference Include="Newtonsoft.Json">
             <HintPath>$(DalamudLibPath)Newtonsoft.Json.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="TerraFX.Interop.Windows">
+            <HintPath>$(DalamudLibPath)TerraFX.Interop.Windows.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Serilog">
+            <HintPath>$(DalamudLibPath)Serilog.dll</HintPath>
             <Private>False</Private>
         </Reference>
     </ItemGroup>
