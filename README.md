@@ -1,60 +1,91 @@
-# Retainer Price Adjuster
+# Auto Retainer Sell List
 
-FFXIVのリテイナー出品価格を自動調整するDalamudプラグイン
+A Dalamud plugin for FFXIV that automatically manages retainer sell listings with smart pricing based on market board data.
 
-## 機能
+## Features
 
-- 呼び鈴に近づくと自動的にインタラクト
-- リテイナーを順番に選択
-- 出品リストを自動取得
-- MarketBuddyと連携して最安値を取得
-- 最安値-1ギルに価格を自動設定
-- 全リテイナーを自動処理
+- **Automated Sell List Management**: Configure a list of items to maintain on sale across your retainers
+- **Smart Pricing**: Automatically sets prices at (lowest market price - 1 gil) to undercut competition
+- **Automatic Window Detection**: Opens the management window automatically when you access your retainer list
+- **Multi-Retainer Support**: Process all your retainers automatically
+- **DDD Architecture**: Built with Domain-Driven Design principles for maintainability and testability
 
-## ビルド方法
+## Usage
 
-### 前提条件
+1. Install the plugin through Dalamud Plugin Installer
+2. Use `/arsl` command to open the settings window
+3. Configure your sell list with items you want to maintain on sale
+4. Access your retainer list - the plugin window will open automatically
+5. The plugin will monitor market prices and adjust your retainer listings accordingly
+
+## Architecture
+
+This plugin follows a clean architecture with clear separation of concerns:
+
+- **Domain Layer**: Core business logic and domain models
+- **Application Layer**: Use cases and queries
+- **Infrastructure Layer**: Game client integration, persistence, and automation
+- **Presentation Layer**: UI and ViewModels
+
+## Building
+
+### Prerequisites
 
 - .NET 10.0 SDK
-- Dalamud開発環境
+- Dalamud development environment
+- Visual Studio 2022 or Rider (recommended)
 
-### セットアップ
+### Setup
 
-1. リポジトリをクローン:
+1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd RetainerPriceAdjuster
+cd AutoRetainerSellList
 ```
 
-2. サブモジュールを初期化:
+2. Initialize submodules:
 ```bash
 git submodule update --init --recursive
 ```
 
-3. ビルド:
+3. Build the project:
 ```bash
 dotnet build
 ```
 
-### 別のPCでのセットアップ
+The compiled plugin will be output to `bin/Debug/` or `bin/Release/` depending on your build configuration.
 
-1. リポジトリをクローン後、必ずサブモジュールを初期化してください:
+### Setting up on a Different Machine
+
+When cloning this repository on a new machine, always initialize the submodules:
+
 ```bash
 git clone <repository-url>
-cd RetainerPriceAdjuster
+cd AutoRetainerSellList
 git submodule update --init --recursive
 ```
 
-これでECommonsライブラリが自動的にダウンロードされます。
+This ensures the ECommons library is properly downloaded.
 
-## 依存関係
+## Dependencies
 
-- [ECommons](https://github.com/NightmareXIV/ECommons) - Gitサブモジュールとして含まれています
-- Dalamud
+- [ECommons](https://github.com/NightmareXIV/ECommons) - Included as a Git submodule
+- Dalamud Plugin Framework
 - FFXIVClientStructs
+- Microsoft.Extensions.DependencyInjection
 
-## 使い方
+## Development
 
-1. プラグインを有効化
-2. チェックボックスをONにすると自動処理が開始されます
-3. 処理中はログウィンドウで進行状況を確認できます
+The project includes comprehensive unit tests using xUnit, Moq, and FluentAssertions. To run tests:
+
+```bash
+dotnet test
+```
+
+## License
+
+This project is licensed under the terms specified in the repository.
+
+## Contributing
+
+Contributions are welcome! Please ensure all tests pass and follow the existing code structure when submitting pull requests.
