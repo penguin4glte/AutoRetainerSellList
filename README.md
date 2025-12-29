@@ -2,6 +2,12 @@
 
 A Dalamud plugin for FFXIV that automatically manages retainer sell listings with smart pricing based on market board data.
 
+## Installation
+Add the following repo to your Dalamud custom plugin repositories:
+```
+https://raw.githubusercontent.com/penguin4glte/DalamudPluginRepo/master/pluginmaster.json
+```
+
 ## Features
 
 - **Automated Sell List Management**: Configure a list of items to maintain on sale across your retainers
