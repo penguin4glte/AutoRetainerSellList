@@ -74,11 +74,10 @@ public class SettingsWindow : Window
                 ImGui.Spacing();
 
                 // Sell list table
-                if (ImGui.BeginTable("SellListTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY))
+                if (ImGui.BeginTable("SellListTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY))
                 {
                     ImGui.TableSetupColumn("Item", ImGuiTableColumnFlags.WidthStretch);
                     ImGui.TableSetupColumn("Quantity", ImGuiTableColumnFlags.WidthFixed, 80);
-                    ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 150);
                     ImGui.TableSetupColumn("Delete", ImGuiTableColumnFlags.WidthFixed, 60);
                     ImGui.TableHeadersRow();
 
@@ -103,10 +102,6 @@ public class SettingsWindow : Window
                                 _viewModel.UpdateQuantity(item.Guid, quantity);
                             }
                         }
-
-                        // Actions
-                        ImGui.TableNextColumn();
-                        ImGui.TextDisabled($"ID: {item.ItemId}");
 
                         // Delete button
                         ImGui.TableNextColumn();
