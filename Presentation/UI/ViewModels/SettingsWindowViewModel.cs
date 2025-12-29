@@ -18,6 +18,10 @@ public class SettingsWindowViewModel
     public RetainerDto? SelectedRetainer { get; set; }
     public List<SellListItemDto> SellListItems { get; private set; } = new();
 
+    // Change tracking
+    private List<SellListItemDto> _originalSellListItems = new();
+    public bool HasChanges { get; private set; } = false;
+
     // Item search
     public string SearchQuery { get; set; } = string.Empty;
     public List<SearchItemsQuery.ItemSearchResult> SearchResults { get; private set; } = new();
@@ -54,7 +58,9 @@ public class SettingsWindowViewModel
         {
             SelectedRetainer = retainer;
             var sellList = await _getSellListQuery.ExecuteAsync(retainer.RetainerId);
-            SellListItems = sellList?.Items ?? new List<SellListItemDto>();
+            SellListItems = sellList?.Items.ToList() ?? new List<SellListItemDto>();
+            _originalSellListItems = sellList?.Items.ToList() ?? new List<SellListItemDto>();
+            HasChanges = false;
         }
         catch (Exception ex)
         {
@@ -81,7 +87,82 @@ public class SettingsWindowViewModel
         }
     }
 
-    public async void AddItem(uint itemId, string itemName, int quantity)
+    private void CheckForChanges()
+    {
+        // Compare current items with original items
+        if (SellListItems.Count != _originalSellListItems.Count)
+        {
+            HasChanges = true;
+            return;
+        }
+
+        for (int i = 0; i < SellListItems.Count; i++)
+        {
+            var current = SellListItems[i];
+            var original = _originalSellListItems.FirstOrDefault(o => o.Guid == current.Guid);
+
+            if (original == null ||
+                current.ItemId != original.ItemId ||
+                current.QuantityToMaintain != original.QuantityToMaintain)
+            {
+                HasChanges = true;
+                return;
+            }
+        }
+
+        HasChanges = false;
+    }
+
+    public async void SaveChanges()
+    {
+        try
+        {
+            if (SelectedRetainer == null)
+            {
+                Svc.Log.Warning("[SettingsWindowViewModel] No retainer selected");
+                return;
+            }
+
+            await _updateSellListUseCase.ExecuteAsync(
+                SelectedRetainer.RetainerId,
+                SelectedRetainer.Name,
+                SellListItems);
+
+            // Update original state after successful save
+            _originalSellListItems = SellListItems.ToList();
+            HasChanges = false;
+
+            Svc.Log.Info($"[SettingsWindowViewModel] Changes saved for {SelectedRetainer.Name}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[SettingsWindowViewModel] Error saving changes: {ex}");
+        }
+    }
+
+    public void CancelChanges()
+    {
+        try
+        {
+            if (SelectedRetainer == null)
+            {
+                Svc.Log.Warning("[SettingsWindowViewModel] No retainer selected");
+                return;
+            }
+
+            // Restore original state
+            SellListItems = _originalSellListItems.ToList();
+            HasChanges = false;
+
+            Svc.Log.Info($"[SettingsWindowViewModel] Changes cancelled for {SelectedRetainer.Name}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[SettingsWindowViewModel] Error cancelling changes: {ex}");
+        }
+    }
+
+    public void AddItem(uint itemId, string itemName, int quantity)
     {
         try
         {
@@ -98,17 +179,8 @@ public class SettingsWindowViewModel
                 System.Guid.NewGuid().ToString()
             );
 
-            var updatedItems = SellListItems.ToList();
-            updatedItems.Add(newItem);
-
-            await _updateSellListUseCase.ExecuteAsync(
-                SelectedRetainer.RetainerId,
-                SelectedRetainer.Name,
-                updatedItems);
-
-            // Reload
-            LoadSellList(SelectedRetainer);
-
+            SellListItems.Add(newItem);
+            CheckForChanges();
         }
         catch (Exception ex)
         {
@@ -116,7 +188,7 @@ public class SettingsWindowViewModel
         }
     }
 
-    public async void RemoveItem(string guid)
+    public void RemoveItem(string guid)
     {
         try
         {
@@ -126,16 +198,12 @@ public class SettingsWindowViewModel
                 return;
             }
 
-            var updatedItems = SellListItems.Where(i => i.Guid != guid).ToList();
-
-            await _updateSellListUseCase.ExecuteAsync(
-                SelectedRetainer.RetainerId,
-                SelectedRetainer.Name,
-                updatedItems);
-
-            // Reload
-            LoadSellList(SelectedRetainer);
-
+            var itemToRemove = SellListItems.FirstOrDefault(i => i.Guid == guid);
+            if (itemToRemove != null)
+            {
+                SellListItems.Remove(itemToRemove);
+                CheckForChanges();
+            }
         }
         catch (Exception ex)
         {
@@ -143,7 +211,7 @@ public class SettingsWindowViewModel
         }
     }
 
-    public async void ClearList()
+    public void ClearList()
     {
         try
         {
@@ -153,14 +221,8 @@ public class SettingsWindowViewModel
                 return;
             }
 
-            await _updateSellListUseCase.ExecuteAsync(
-                SelectedRetainer.RetainerId,
-                SelectedRetainer.Name,
-                new List<SellListItemDto>());
-
-            // Reload
-            LoadSellList(SelectedRetainer);
-
+            SellListItems.Clear();
+            CheckForChanges();
         }
         catch (Exception ex)
         {
@@ -168,7 +230,7 @@ public class SettingsWindowViewModel
         }
     }
 
-    public async void UpdateQuantity(string guid, int newQuantity)
+    public void UpdateQuantity(string guid, int newQuantity)
     {
         try
         {
@@ -178,28 +240,18 @@ public class SettingsWindowViewModel
                 return;
             }
 
-            var updatedItems = SellListItems.Select(item =>
+            var itemIndex = SellListItems.FindIndex(i => i.Guid == guid);
+            if (itemIndex >= 0)
             {
-                if (item.Guid == guid)
-                {
-                    return new SellListItemDto(
-                        item.ItemId,
-                        item.ItemName,
-                        newQuantity,
-                        item.Guid
-                    );
-                }
-                return item;
-            }).ToList();
-
-            await _updateSellListUseCase.ExecuteAsync(
-                SelectedRetainer.RetainerId,
-                SelectedRetainer.Name,
-                updatedItems);
-
-            // Reload
-            LoadSellList(SelectedRetainer);
-
+                var item = SellListItems[itemIndex];
+                SellListItems[itemIndex] = new SellListItemDto(
+                    item.ItemId,
+                    item.ItemName,
+                    newQuantity,
+                    item.Guid
+                );
+                CheckForChanges();
+            }
         }
         catch (Exception ex)
         {

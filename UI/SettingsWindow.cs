@@ -37,6 +37,11 @@ public class SettingsWindow : Window
                 var retainer = _viewModel.Retainers[i];
                 if (ImGui.Selectable($"{retainer.Name}##{i}", _selectedRetainerIndex == i))
                 {
+                    // Discard any unsaved changes when switching retainers
+                    if (_viewModel.HasChanges)
+                    {
+                        _viewModel.CancelChanges();
+                    }
                     _selectedRetainerIndex = i;
                     _viewModel.LoadSellList(retainer);
                 }
@@ -67,6 +72,34 @@ public class SettingsWindow : Window
                 if (ImGui.Button("Clear All", new System.Numerics.Vector2(100, 25)))
                 {
                     _viewModel.ClearList();
+                }
+
+                // Save/Cancel buttons - only show when there are changes
+                if (_viewModel.HasChanges)
+                {
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.2f, 0.6f, 0.2f, 1.0f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.3f, 0.7f, 0.3f, 1.0f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.15f, 0.5f, 0.15f, 1.0f));
+                    if (ImGui.Button("Save Changes", new System.Numerics.Vector2(120, 30)))
+                    {
+                        _viewModel.SaveChanges();
+                    }
+                    ImGui.PopStyleColor(3);
+
+                    ImGui.SameLine();
+
+                    ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.6f, 0.2f, 0.2f, 1.0f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.7f, 0.3f, 0.3f, 1.0f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.5f, 0.15f, 0.15f, 1.0f));
+                    if (ImGui.Button("Cancel", new System.Numerics.Vector2(120, 30)))
+                    {
+                        _viewModel.CancelChanges();
+                    }
+                    ImGui.PopStyleColor(3);
                 }
 
                 ImGui.Spacing();
