@@ -5,6 +5,8 @@ using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using System;
 using static ECommons.GenericHelpers;
+using Dalamud.Interface;
+using ECommons.ImGuiMethods;
 
 namespace AutoRetainerSellList.UI;
 
@@ -19,7 +21,7 @@ public class MainWindow : Window
         _viewModel = viewModel;
         _getSettingsWindow = getSettingsWindow;
 
-        Size = new System.Numerics.Vector2(300, 40);
+        Size = new System.Numerics.Vector2(240, 40);
         SizeCondition = ImGuiCond.Always;
 
         Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar;
@@ -36,7 +38,7 @@ public class MainWindow : Window
                 var retainerListSize = new System.Numerics.Vector2(retainerListAddon->GetScaledWidth(true), retainerListAddon->GetScaledHeight(true));
 
                 // Position: MainWindow's bottom-right corner at RetainerList's top-right corner
-                var mainWindowSize = new System.Numerics.Vector2(300, 40);
+                var mainWindowSize = new System.Numerics.Vector2(240, 40);
                 var newPos = new System.Numerics.Vector2(
                     retainerListPos.X + retainerListSize.X - mainWindowSize.X, // Align right edges
                     retainerListPos.Y - mainWindowSize.Y  // MainWindow bottom = RetainerList top
@@ -64,10 +66,15 @@ public class MainWindow : Window
 
             // Right side: Settings button
             ImGui.SameLine();
-            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 110); // Position button on the right
-            if (ImGui.Button("Settings", new System.Numerics.Vector2(100, 0)))
+            var buttonSize = ImGui.GetFrameHeight(); // Make icon button square
+            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - buttonSize - ImGui.GetStyle().WindowPadding.X);
+            if (ImGuiEx.IconButton(FontAwesomeIcon.Cog, "##Settings"))
             {
                 _getSettingsWindow().Toggle();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Settings");
             }
         }
         catch (Exception ex)
