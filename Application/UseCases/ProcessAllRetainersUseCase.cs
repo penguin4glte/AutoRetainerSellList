@@ -70,7 +70,11 @@ public class ProcessAllRetainersUseCase
                         var retainerIdVo = new Domain.ValueObjects.RetainerId(retainerId);
                         if (sellLists.ContainsKey(retainerIdVo))
                         {
-                            _retainersToProcess.Add(retainerId);
+                            var sellList = sellLists[retainerIdVo];
+                            if (!sellList.IsEmpty)
+                            {
+                                _retainersToProcess.Add(retainerId);
+                            }
                         }
                     }
                 }

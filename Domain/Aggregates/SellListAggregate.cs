@@ -12,6 +12,7 @@ public class SellListAggregate
     public Retainer Retainer { get; }
     public IReadOnlyList<SellListItem> Items => _items.AsReadOnly();
     public int ItemCount => _items.Count;
+    public bool IsEmpty => ItemCount == 0;
     public bool CanAddItem => _items.Count < MaxItems;
     public int RemainingSlots => MaxItems - _items.Count;
 

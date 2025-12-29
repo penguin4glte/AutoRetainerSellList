@@ -336,4 +336,27 @@ public class SellListAggregateTests
         // Assert
         aggregate.RemainingSlots.Should().Be(17);
     }
+
+    [Fact]
+    public void IsEmpty_Should_Return_True_When_No_Items()
+    {
+        // Arrange
+        var aggregate = new SellListAggregate(_testRetainer);
+
+        // Assert
+        aggregate.IsEmpty.Should().BeTrue();
+        aggregate.ItemCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void IsEmpty_Should_Return_False_When_Items_Exist()
+    {
+        // Arrange
+        var aggregate = new SellListAggregate(_testRetainer);
+        aggregate.AddItem(new ItemId(100), "Item1", new Quantity(5));
+
+        // Assert
+        aggregate.IsEmpty.Should().BeFalse();
+        aggregate.ItemCount.Should().Be(1);
+    }
 }
