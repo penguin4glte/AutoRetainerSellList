@@ -19,8 +19,11 @@
 
     <ItemGroup>
         <Compile Remove="ECommons\**" />
+        <Compile Remove="Tests\**" />
         <EmbeddedResource Remove="ECommons\**" />
+        <EmbeddedResource Remove="Tests\**" />
         <None Remove="ECommons\**" />
+        <None Remove="Tests\**" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -38,14 +41,6 @@
     <ItemGroup>
         <PackageReference Include="DalamudPackager" Version="2.1.13" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-        <PackageReference Include="xunit" Version="2.9.2" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Moq" Version="4.20.72" />
-        <PackageReference Include="FluentAssertions" Version="7.0.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     </ItemGroup>
 
     <ItemGroup>
