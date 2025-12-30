@@ -10,5 +10,7 @@ public interface IConfigurationRepository
     Task SaveSellListAsync(RetainerId retainerId, SellListAggregate aggregate);
     Task<bool> GetAutoExecuteEnabledAsync();
     Task SetAutoExecuteEnabledAsync(bool enabled);
+    Task<string> GetChatLanguageAsync();
+    Task SetChatLanguageAsync(string language);
     Task SaveAsync();
 }

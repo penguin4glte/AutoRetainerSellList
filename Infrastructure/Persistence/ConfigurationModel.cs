@@ -10,6 +10,9 @@ public class ConfigurationModel : IPluginConfiguration
     // Auto-execute checkbox state
     public bool AutoExecuteEnabled { get; set; } = false;
 
+    // Chat log language setting
+    public string ChatLanguage { get; set; } = "Japanese";
+
     // Retainer-specific sell lists
     public Dictionary<ulong, RetainerSellListData> RetainerSellLists { get; set; } = new();
 }

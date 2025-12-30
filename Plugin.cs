@@ -10,6 +10,7 @@ using AutoRetainerSellList.Infrastructure.Persistence;
 using AutoRetainerSellList.Infrastructure.GameClient;
 using AutoRetainerSellList.Infrastructure.Automation;
 using AutoRetainerSellList.Infrastructure.Monitoring;
+using AutoRetainerSellList.Infrastructure.Localization;
 using AutoRetainerSellList.Application.UseCases;
 using AutoRetainerSellList.Application.Queries;
 
@@ -53,6 +54,9 @@ public sealed class Plugin : IDalamudPlugin
             services.AddSingleton<AddonInteractionService>();
             services.AddSingleton<ContextMenuService>();
             services.AddSingleton<RetainerListMonitor>();
+
+            // Infrastructure - Localization
+            services.AddSingleton<ChatMessageService>();
 
             // Application - Use Cases
             services.AddSingleton<ExecuteSellListUseCase>();

@@ -1,4 +1,5 @@
 using AutoRetainerSellList.Domain.ValueObjects;
+using AutoRetainerSellList.Infrastructure.Localization;
 using Dalamud.Game.Text.SeStringHandling;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -13,10 +14,12 @@ namespace AutoRetainerSellList.Infrastructure.GameClient;
 public unsafe class GameUIService
 {
     private readonly MarketBoardService _marketBoardService;
+    private readonly ChatMessageService _chatMessageService;
 
-    public GameUIService(MarketBoardService marketBoardService)
+    public GameUIService(MarketBoardService marketBoardService, ChatMessageService chatMessageService)
     {
         _marketBoardService = marketBoardService;
+        _chatMessageService = chatMessageService;
     }
 
     public bool OpenItemContextMenu(InventoryType inventoryType, uint slot)
@@ -143,9 +146,10 @@ public unsafe class GameUIService
                     ECommons.Automation.Callback.Fire(&addon->AtkUnitBase, true, 0);
                     addon->AtkUnitBase.Close(true);
 
+                    var messageText = _chatMessageService.GetItemListedMessageAsync(price.Value).GetAwaiter().GetResult();
                     var chatMessage = new SeStringBuilder()
                         .AddItemLink(itemId, false)
-                        .AddText($" を {price.Value:N0} ギルで出品しました")
+                        .AddText(messageText)
                         .Build();
                     Svc.Chat.Print(chatMessage);
                 }

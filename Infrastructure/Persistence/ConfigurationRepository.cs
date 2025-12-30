@@ -90,6 +90,17 @@ public class ConfigurationRepository : IConfigurationRepository
         return Task.CompletedTask;
     }
 
+    public Task<string> GetChatLanguageAsync()
+    {
+        return Task.FromResult(_config.ChatLanguage);
+    }
+
+    public Task SetChatLanguageAsync(string language)
+    {
+        _config.ChatLanguage = language;
+        return Task.CompletedTask;
+    }
+
     public Task SaveAsync()
     {
         try

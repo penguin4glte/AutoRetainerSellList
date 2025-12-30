@@ -1,6 +1,7 @@
 using AutoRetainerSellList.Application.DTOs;
 using AutoRetainerSellList.Application.Queries;
 using AutoRetainerSellList.Application.UseCases;
+using AutoRetainerSellList.Domain.Repositories;
 using AutoRetainerSellList.Domain.ValueObjects;
 using ECommons.DalamudServices;
 using Lumina.Excel.Sheets;
@@ -13,10 +14,12 @@ public class SettingsWindowViewModel
     private readonly GetSellListQuery _getSellListQuery;
     private readonly UpdateSellListUseCase _updateSellListUseCase;
     private readonly SearchItemsQuery _searchItemsQuery;
+    private readonly IConfigurationRepository _configRepository;
 
     public List<RetainerDto> Retainers { get; private set; } = new();
     public RetainerDto? SelectedRetainer { get; set; }
     public List<SellListItemDto> SellListItems { get; private set; } = new();
+    public string ChatLanguage { get; set; } = "Japanese";
 
     // Change tracking
     private List<SellListItemDto> _originalSellListItems = new();
@@ -32,12 +35,14 @@ public class SettingsWindowViewModel
         GetRetainerListQuery getRetainersQuery,
         GetSellListQuery getSellListQuery,
         UpdateSellListUseCase updateSellListUseCase,
-        SearchItemsQuery searchItemsQuery)
+        SearchItemsQuery searchItemsQuery,
+        IConfigurationRepository configRepository)
     {
         _getRetainersQuery = getRetainersQuery;
         _getSellListQuery = getSellListQuery;
         _updateSellListUseCase = updateSellListUseCase;
         _searchItemsQuery = searchItemsQuery;
+        _configRepository = configRepository;
     }
 
     public async void LoadRetainers()
@@ -45,10 +50,26 @@ public class SettingsWindowViewModel
         try
         {
             Retainers = await _getRetainersQuery.ExecuteAsync();
+            ChatLanguage = await _configRepository.GetChatLanguageAsync();
         }
         catch (Exception ex)
         {
             Svc.Log.Error($"[SettingsWindowViewModel] Error loading retainers: {ex}");
+        }
+    }
+
+    public async void SaveChatLanguage(string language)
+    {
+        try
+        {
+            await _configRepository.SetChatLanguageAsync(language);
+            await _configRepository.SaveAsync();
+            ChatLanguage = language;
+            Svc.Log.Info($"[SettingsWindowViewModel] Chat language changed to {language}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[SettingsWindowViewModel] Error saving chat language: {ex}");
         }
     }
 

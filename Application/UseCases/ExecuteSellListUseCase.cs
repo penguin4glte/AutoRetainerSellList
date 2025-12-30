@@ -2,6 +2,7 @@ using AutoRetainerSellList.Domain.Repositories;
 using AutoRetainerSellList.Domain.ValueObjects;
 using AutoRetainerSellList.Infrastructure.Automation;
 using AutoRetainerSellList.Infrastructure.GameClient;
+using AutoRetainerSellList.Infrastructure.Localization;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
@@ -14,6 +15,7 @@ public class ExecuteSellListUseCase
     private readonly GameUIService _gameUIService;
     private readonly MarketBoardService _marketBoardService;
     private readonly TaskExecutor _taskExecutor;
+    private readonly ChatMessageService _chatMessageService;
 
     public bool IsRunning => _taskExecutor.IsBusy;
 
@@ -22,13 +24,15 @@ public class ExecuteSellListUseCase
         IRetainerRepository retainerRepository,
         GameUIService gameUIService,
         MarketBoardService marketBoardService,
-        TaskExecutor taskExecutor)
+        TaskExecutor taskExecutor,
+        ChatMessageService chatMessageService)
     {
         _configRepository = configRepository;
         _retainerRepository = retainerRepository;
         _gameUIService = gameUIService;
         _marketBoardService = marketBoardService;
         _taskExecutor = taskExecutor;
+        _chatMessageService = chatMessageService;
     }
 
     public async Task<bool> ExecuteAsync(ulong retainerId, Action? onComplete = null)
@@ -96,7 +100,8 @@ public class ExecuteSellListUseCase
 
             if (needed <= 0)
             {
-                _gameUIService.PrintItemMessage(itemId.Value, $" はすでに {currentListed}/{quantity} 出品済みです");
+                var alreadyListedMessage = await _chatMessageService.GetAlreadyListedMessageAsync(currentListed, quantity.Value);
+                _gameUIService.PrintItemMessage(itemId.Value, alreadyListedMessage);
                 return true;
             }
 
@@ -105,7 +110,8 @@ public class ExecuteSellListUseCase
             if (inventorySlot == null)
             {
                 Svc.Log.Warning($"[ExecuteSellListUseCase] {itemName} not found in retainer inventory");
-                _gameUIService.PrintErrorMessage(itemId.Value, " がリテイナー所持品に見つかりません");
+                var notFoundMessage = await _chatMessageService.GetItemNotFoundMessageAsync();
+                _gameUIService.PrintErrorMessage(itemId.Value, notFoundMessage);
                 return true;
             }
 
@@ -163,7 +169,8 @@ public class ExecuteSellListUseCase
             if (sellingPrice == null)
             {
                 Svc.Log.Error($"[ExecuteSellListUseCase] Failed to get price for {itemName}, CANCELING (will not list at dangerous price)");
-                _gameUIService.PrintErrorMessage(itemId.Value, " の価格取得に失敗しました。出品をキャンセルします。");
+                var priceFailureMessage = await _chatMessageService.GetPriceFailureMessageAsync();
+                _gameUIService.PrintErrorMessage(itemId.Value, priceFailureMessage);
                 return _gameUIService.CancelRetainerSell();
             }
 
@@ -172,7 +179,8 @@ public class ExecuteSellListUseCase
         catch (Exception ex)
         {
             Svc.Log.Error($"[ExecuteSellListUseCase] Error in SetPriceAndConfirmAsync: {ex}");
-            _gameUIService.PrintErrorMessage(itemId.Value, " の処理中にエラーが発生しました。");
+            var processingErrorMessage = await _chatMessageService.GetProcessingErrorMessageAsync();
+            _gameUIService.PrintErrorMessage(itemId.Value, processingErrorMessage);
             return _gameUIService.CancelRetainerSell();
         }
     }

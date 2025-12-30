@@ -26,6 +26,22 @@ public class SettingsWindow : Window
 
     public override void Draw()
     {
+        // Language settings at the top
+        ImGui.Text("Chat Log Language:");
+        ImGui.SameLine();
+
+        string[] languages = { "Japanese", "English" };
+        int currentLanguageIndex = _viewModel.ChatLanguage == "English" ? 1 : 0;
+        ImGui.SetNextItemWidth(150);
+        if (ImGui.Combo("##ChatLanguage", ref currentLanguageIndex, languages, languages.Length))
+        {
+            _viewModel.SaveChatLanguage(languages[currentLanguageIndex]);
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
         // Left panel: Retainer list
         if (ImGui.BeginChild("RetainerList", new System.Numerics.Vector2(200, 0), true))
         {
