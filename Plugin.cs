@@ -18,7 +18,6 @@ namespace AutoRetainerSellList;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    public string Name => "Auto Retainer Sell List";
     private const string CommandName = "/arsl";
 
     private readonly IServiceProvider _serviceProvider;
