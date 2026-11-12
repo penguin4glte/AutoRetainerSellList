@@ -82,10 +82,23 @@ public class MarketBoardService : IDisposable
     {
         try
         {
+            ItemId? requestedItemId;
             lock (_lock)
             {
                 if (_priceRequestTcs == null || _priceRequestTcs.Task.IsCompleted)
                     return;
+                requestedItemId = _currentRequestItemId;
+            }
+
+            // Ignore offerings for a different item (e.g. a late packet from a previous request)
+            if (requestedItemId != null && currentOfferings.ItemListings.Count > 0)
+            {
+                var receivedItemId = currentOfferings.ItemListings[0].ItemId % 1_000_000;
+                if (receivedItemId != requestedItemId.Value % 1_000_000)
+                {
+                    Svc.Log.Warning($"[MarketBoardService] Ignoring offerings for item {receivedItemId} (waiting for {requestedItemId})");
+                    return;
+                }
             }
 
             if (currentOfferings.ItemListings.Count == 0)
@@ -107,12 +120,17 @@ public class MarketBoardService : IDisposable
 
             _lastRequestId = currentOfferings.RequestId;
 
-            // Get lowest market price
-            var lowestListing = currentOfferings.ItemListings[0];
-            var marketPrice = new Price(Math.Max((int)lowestListing.PricePerUnit, 1));
+            // Get lowest market price (do not rely on listing order)
+            var lowestListing = currentOfferings.ItemListings.MinBy(l => l.PricePerUnit)!;
+            var marketPrice = new Price((int)Math.Clamp(lowestListing.PricePerUnit, 1u, (uint)int.MaxValue));
 
             // Calculate selling price using PricingStrategy
             var sellingPrice = _pricingStrategy.CalculateSellingPrice(marketPrice);
+
+            Svc.Log.Info(
+                $"[MarketBoardService] Item {lowestListing.ItemId}: lowest {lowestListing.PricePerUnit} gil " +
+                $"(retainer: {lowestListing.RetainerName}, HQ: {lowestListing.IsHq}, listings: {currentOfferings.ItemListings.Count}, " +
+                $"requestId: {currentOfferings.RequestId}) -> selling price {sellingPrice.Value} gil");
 
 
             lock (_lock)
