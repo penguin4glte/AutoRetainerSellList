@@ -152,39 +152,42 @@ public class ExecuteSellListUseCase
 
         // Request market board price (BeginRequest is called inside this method)
         _taskExecutor.Enqueue(() => _gameUIService.RequestMarketBoardPrice(itemId, isHq, undercutHqOnly), $"RequestPrice_{itemId}");
-        _taskExecutor.EnqueueDelay(1500); // Wait for market board data (price calculation happens in MarketBoardService)
+        _taskExecutor.EnqueueDelay(500);
 
-        // Set price and confirm
+        // Poll until all market board listings are loaded and the selling price is calculated
+        Price? sellingPrice = null;
         _taskExecutor.Enqueue(() =>
         {
-            return SetPriceAndConfirmAsync(itemId, itemName).GetAwaiter().GetResult();
-        }, $"SetPrice_{itemId}");
-        _taskExecutor.EnqueueDelay(500);
-    }
+            var status = _marketBoardService.TryGetSellingPrice(itemId, out var price, timeoutMs: 10000);
+            if (status == false)
+                return false; // still loading, retry next frame
 
-    private async Task<bool?> SetPriceAndConfirmAsync(ItemId itemId, string itemName)
-    {
-        try
-        {
-            // Waits for all market board batches and returns the calculated selling price (not market price)
-            var sellingPrice = await _marketBoardService.GetSellingPriceAsync(itemId, timeoutMs: 10000);
+            sellingPrice = status == true ? price : null;
             if (sellingPrice == null)
             {
                 Svc.Log.Error($"[ExecuteSellListUseCase] Failed to get price for {itemName}, CANCELING (will not list at dangerous price)");
-                var priceFailureMessage = await _chatMessageService.GetPriceFailureMessageAsync();
+                var priceFailureMessage = _chatMessageService.GetPriceFailureMessageAsync().GetAwaiter().GetResult();
                 _gameUIService.PrintErrorMessage(itemId.Value, priceFailureMessage);
+            }
+            return true;
+        }, $"GetPrice_{itemId}");
+
+        // Set price and confirm (or cancel when no safe price is available)
+        _taskExecutor.Enqueue(() =>
+        {
+            try
+            {
+                return sellingPrice != null
+                    ? _gameUIService.SetPriceAndConfirm(sellingPrice, itemId, itemName)
+                    : _gameUIService.CancelRetainerSell();
+            }
+            catch (Exception ex)
+            {
+                Svc.Log.Error($"[ExecuteSellListUseCase] Error in SetPrice: {ex}");
                 return _gameUIService.CancelRetainerSell();
             }
-
-            return _gameUIService.SetPriceAndConfirm(sellingPrice, itemId, itemName);
-        }
-        catch (Exception ex)
-        {
-            Svc.Log.Error($"[ExecuteSellListUseCase] Error in SetPriceAndConfirmAsync: {ex}");
-            var processingErrorMessage = await _chatMessageService.GetProcessingErrorMessageAsync();
-            _gameUIService.PrintErrorMessage(itemId.Value, processingErrorMessage);
-            return _gameUIService.CancelRetainerSell();
-        }
+        }, $"SetPrice_{itemId}");
+        _taskExecutor.EnqueueDelay(500);
     }
 
     public void Abort()
