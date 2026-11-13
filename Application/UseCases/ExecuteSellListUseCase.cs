@@ -122,8 +122,10 @@ public class ExecuteSellListUseCase
                 return true;
             }
 
+            var undercutHqOnly = await _configRepository.GetUndercutHqOnlyAsync();
+
             // Enqueue UI interaction tasks
-            SellItemFromSlot(inventoryType, inventorySlot.SlotIndex, itemId, itemName);
+            SellItemFromSlot(inventoryType, inventorySlot.SlotIndex, inventorySlot.IsHq, undercutHqOnly, itemId, itemName);
 
             return true;
         }
@@ -134,7 +136,7 @@ public class ExecuteSellListUseCase
         }
     }
 
-    private void SellItemFromSlot(InventoryType inventoryType, uint slot, ItemId itemId, string itemName)
+    private void SellItemFromSlot(InventoryType inventoryType, uint slot, bool isHq, bool undercutHqOnly, ItemId itemId, string itemName)
     {
         // Open context menu
         _taskExecutor.Enqueue(() => _gameUIService.OpenItemContextMenu(inventoryType, slot), $"OpenMenu_{itemId}");
@@ -149,7 +151,7 @@ public class ExecuteSellListUseCase
         _taskExecutor.EnqueueDelay(100);
 
         // Request market board price (BeginRequest is called inside this method)
-        _taskExecutor.Enqueue(() => _gameUIService.RequestMarketBoardPrice(itemId), $"RequestPrice_{itemId}");
+        _taskExecutor.Enqueue(() => _gameUIService.RequestMarketBoardPrice(itemId, isHq, undercutHqOnly), $"RequestPrice_{itemId}");
         _taskExecutor.EnqueueDelay(1500); // Wait for market board data (price calculation happens in MarketBoardService)
 
         // Set price and confirm
@@ -164,8 +166,8 @@ public class ExecuteSellListUseCase
     {
         try
         {
-            // GetLowestPriceAsync now returns the calculated selling price (not market price)
-            var sellingPrice = await _marketBoardService.GetLowestPriceAsync(itemId, timeoutMs: 10000);
+            // Waits for all market board batches and returns the calculated selling price (not market price)
+            var sellingPrice = await _marketBoardService.GetSellingPriceAsync(itemId, timeoutMs: 10000);
             if (sellingPrice == null)
             {
                 Svc.Log.Error($"[ExecuteSellListUseCase] Failed to get price for {itemName}, CANCELING (will not list at dangerous price)");

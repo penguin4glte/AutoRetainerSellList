@@ -13,6 +13,9 @@ public class ConfigurationModel : IPluginConfiguration
     // Chat log language setting
     public string ChatLanguage { get; set; } = "Japanese";
 
+    // When selling an HQ item, undercut only HQ listings (ignore cheaper NQ listings)
+    public bool UndercutHqOnly { get; set; } = true;
+
     // Retainer-specific sell lists
     public Dictionary<ulong, RetainerSellListData> RetainerSellLists { get; set; } = new();
 }

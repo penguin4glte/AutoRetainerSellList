@@ -14,5 +14,6 @@ public interface IRetainerRepository
 public record InventorySlot(
     string InventoryType,
     uint SlotIndex,
-    int Quantity
+    int Quantity,
+    bool IsHq = false
 );

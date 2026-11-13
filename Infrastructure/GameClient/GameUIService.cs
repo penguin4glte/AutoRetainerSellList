@@ -104,14 +104,14 @@ public unsafe class GameUIService
         return false;
     }
 
-    public bool RequestMarketBoardPrice(ItemId itemId)
+    public bool RequestMarketBoardPrice(ItemId itemId, bool sellingHq, bool undercutHqOnly)
     {
         try
         {
             if (TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var addon) && IsAddonReady(&addon->AtkUnitBase))
             {
                 // Notify MarketBoardService that we're starting a request
-                _marketBoardService.BeginRequest(itemId);
+                _marketBoardService.BeginRequest(itemId, sellingHq, undercutHqOnly);
 
                 // Click "Compare Prices" button (callback 4)
                 ECommons.Automation.Callback.Fire(&addon->AtkUnitBase, true, 4);

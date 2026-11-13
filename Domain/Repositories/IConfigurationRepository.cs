@@ -12,5 +12,7 @@ public interface IConfigurationRepository
     Task SetAutoExecuteEnabledAsync(bool enabled);
     Task<string> GetChatLanguageAsync();
     Task SetChatLanguageAsync(string language);
+    Task<bool> GetUndercutHqOnlyAsync();
+    Task SetUndercutHqOnlyAsync(bool enabled);
     Task SaveAsync();
 }

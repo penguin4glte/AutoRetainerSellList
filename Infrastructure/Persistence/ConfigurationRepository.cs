@@ -101,6 +101,17 @@ public class ConfigurationRepository : IConfigurationRepository
         return Task.CompletedTask;
     }
 
+    public Task<bool> GetUndercutHqOnlyAsync()
+    {
+        return Task.FromResult(_config.UndercutHqOnly);
+    }
+
+    public Task SetUndercutHqOnlyAsync(bool enabled)
+    {
+        _config.UndercutHqOnly = enabled;
+        return Task.CompletedTask;
+    }
+
     public Task SaveAsync()
     {
         try

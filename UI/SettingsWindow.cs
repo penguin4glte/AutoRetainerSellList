@@ -38,6 +38,18 @@ public class SettingsWindow : Window
             _viewModel.SaveChatLanguage(languages[currentLanguageIndex]);
         }
 
+        var undercutHqOnly = _viewModel.UndercutHqOnly;
+        if (ImGui.Checkbox("Undercut HQ listings only when selling HQ items", ref undercutHqOnly))
+        {
+            _viewModel.SaveUndercutHqOnly(undercutHqOnly);
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("HQアイテムを出品するとき、HQの最安値から1ギル引いた価格にします（安いNQ出品は無視）。\n" +
+                             "When selling an HQ item, undercut the lowest HQ listing and ignore cheaper NQ listings.\n" +
+                             "HQの出品が無い場合は、全体の最安値を基準にします。 / Falls back to the overall lowest if there are no HQ listings.");
+        }
+
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();

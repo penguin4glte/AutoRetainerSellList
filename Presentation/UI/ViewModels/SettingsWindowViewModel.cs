@@ -20,6 +20,7 @@ public class SettingsWindowViewModel
     public RetainerDto? SelectedRetainer { get; set; }
     public List<SellListItemDto> SellListItems { get; private set; } = new();
     public string ChatLanguage { get; set; } = "Japanese";
+    public bool UndercutHqOnly { get; set; } = true;
 
     // Change tracking
     private List<SellListItemDto> _originalSellListItems = new();
@@ -51,6 +52,7 @@ public class SettingsWindowViewModel
         {
             Retainers = await _getRetainersQuery.ExecuteAsync();
             ChatLanguage = await _configRepository.GetChatLanguageAsync();
+            UndercutHqOnly = await _configRepository.GetUndercutHqOnlyAsync();
         }
         catch (Exception ex)
         {
@@ -70,6 +72,21 @@ public class SettingsWindowViewModel
         catch (Exception ex)
         {
             Svc.Log.Error($"[SettingsWindowViewModel] Error saving chat language: {ex}");
+        }
+    }
+
+    public async void SaveUndercutHqOnly(bool enabled)
+    {
+        try
+        {
+            UndercutHqOnly = enabled;
+            await _configRepository.SetUndercutHqOnlyAsync(enabled);
+            await _configRepository.SaveAsync();
+            Svc.Log.Info($"[SettingsWindowViewModel] Undercut HQ only changed to {enabled}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[SettingsWindowViewModel] Error saving undercut HQ only: {ex}");
         }
     }
 

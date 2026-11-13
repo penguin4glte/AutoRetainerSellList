@@ -156,7 +156,8 @@ public unsafe class RetainerRepository : IRetainerRepository
                         return Task.FromResult<InventorySlot?>(new InventorySlot(
                             page.ToString(),
                             (uint)i,
-                            (int)slot.Quantity
+                            (int)slot.Quantity,
+                            slot.IsHighQuality()
                         ));
                     }
                 }
