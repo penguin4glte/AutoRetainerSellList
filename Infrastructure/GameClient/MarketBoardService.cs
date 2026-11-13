@@ -20,8 +20,6 @@ public unsafe class MarketBoardService : IDisposable
 {
     // How long the listing data must stay unchanged before treating it as complete
     private const int QuietPeriodMs = 300;
-    // Accept the in-game data even if Dalamud never raised OfferingsReceived for the request
-    private const int EventlessAcceptAfterMs = 3000;
 
     private readonly object _lock = new();
     private readonly PricingStrategy _pricingStrategy;
@@ -35,7 +33,6 @@ public unsafe class MarketBoardService : IDisposable
     private DateTime _lastChangeAt;
     private uint _lastSeenListingCount;
     private int _lastSeenBatchCount;
-    private bool _lastSeenWaiting;
 
     public MarketBoardService(PricingStrategy pricingStrategy)
     {
@@ -56,7 +53,6 @@ public unsafe class MarketBoardService : IDisposable
             _lastChangeAt = DateTime.UtcNow;
             _lastSeenListingCount = uint.MaxValue;
             _lastSeenBatchCount = -1;
-            _lastSeenWaiting = true;
         }
     }
 
@@ -84,27 +80,28 @@ public unsafe class MarketBoardService : IDisposable
                 var proxy = InfoProxyItemSearch.Instance();
                 var proxyMatches = proxy != null && proxy->SearchItemId % 1_000_000 == itemId.Value % 1_000_000;
                 var listingCount = proxyMatches ? proxy->ListingCount : 0;
-                var waiting = !proxyMatches || proxy->WaitingForListings;
 
-                if (listingCount != _lastSeenListingCount || _eventBatchCount != _lastSeenBatchCount || waiting != _lastSeenWaiting)
+                if (listingCount != _lastSeenListingCount || _eventBatchCount != _lastSeenBatchCount)
                 {
                     _lastSeenListingCount = listingCount;
                     _lastSeenBatchCount = _eventBatchCount;
-                    _lastSeenWaiting = waiting;
                     _lastChangeAt = now;
                 }
 
-                var fresh = _eventBatchCount > 0 || elapsedMs >= EventlessAcceptAfterMs;
+                // At least one batch must have arrived for this request so the game data is not left over
+                // from a previous request. (InfoProxyItemSearch.WaitingForListings is not used: it stays true
+                // even after all listings have been received.)
+                var fresh = _eventBatchCount > 0;
                 var stable = (now - _lastChangeAt).TotalMilliseconds >= QuietPeriodMs;
 
-                if (!(proxyMatches && fresh && !waiting && stable))
+                if (!(proxyMatches && fresh && stable))
                 {
                     if (elapsedMs < timeoutMs)
                         return false;
 
                     Svc.Log.Error(
                         $"[MarketBoardService] TIMEOUT waiting for market board price for item {itemId} after {timeoutMs}ms " +
-                        $"(proxy item: {(proxy != null ? proxy->SearchItemId : 0)}, waiting: {waiting}, listings: {listingCount}, event batches: {_eventBatchCount})");
+                        $"(proxy item: {(proxy != null ? proxy->SearchItemId : 0)}, listings: {listingCount}, event batches: {_eventBatchCount})");
                     _currentRequestItemId = null;
                     return null;
                 }
