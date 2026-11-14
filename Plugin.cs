@@ -53,6 +53,8 @@ public sealed class Plugin : IDalamudPlugin
             services.AddSingleton<AddonInteractionService>();
             services.AddSingleton<ContextMenuService>();
             services.AddSingleton<RetainerListMonitor>();
+            services.AddSingleton<MarketDiagnosticsService>();
+            services.AddSingleton<MarketbuddyLockService>();
 
             // Infrastructure - Localization
             services.AddSingleton<ChatMessageService>();
@@ -89,6 +91,12 @@ public sealed class Plugin : IDalamudPlugin
 
             WindowSystem.AddWindow(_mainWindow);
             WindowSystem.AddWindow(settingsWindow);
+
+            // Diagnostics for market board plugin conflicts (e.g. Marketbuddy)
+            _serviceProvider.GetRequiredService<MarketDiagnosticsService>();
+
+            // Pause Marketbuddy's automatic Compare Prices while our automation runs
+            _serviceProvider.GetRequiredService<MarketbuddyLockService>();
 
             // Setup RetainerList monitoring
             _retainerListMonitor = _serviceProvider.GetRequiredService<RetainerListMonitor>();

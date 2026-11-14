@@ -16,6 +16,10 @@ public unsafe class GameUIService
     private readonly MarketBoardService _marketBoardService;
     private readonly ChatMessageService _chatMessageService;
 
+    // How long to wait for the first batch of a market board request someone else already sent
+    private const int ExistingRequestWaitMs = 2000;
+    private DateTime? _existingRequestWaitStartedAt;
+
     public GameUIService(MarketBoardService marketBoardService, ChatMessageService chatMessageService)
     {
         _marketBoardService = marketBoardService;
@@ -110,11 +114,47 @@ public unsafe class GameUIService
         {
             if (TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var addon) && IsAddonReady(&addon->AtkUnitBase))
             {
+                // Diagnostics: if ItemSearchResult is already open or a request is already in flight here,
+                // something else (e.g. Marketbuddy's auto Compare Prices) has already requested the listings
+                var searchResultOpen = TryGetAddonByName<AtkUnitBase>("ItemSearchResult", out var searchAddon);
+                if (_existingRequestWaitStartedAt == null) // log once, not on every retry while waiting
+                    Infrastructure.Monitoring.MarketDiagnosticsService.Log(
+                    $"Before Compare Prices for item {itemId}: ItemSearchResult open={searchResultOpen}" +
+                    (searchResultOpen ? $" (visible={searchAddon->IsVisible})" : "") +
+                    $", ItemHistory open={TryGetAddonByName<AtkUnitBase>("ItemHistory", out _)}, " +
+                    MarketBoardService.DescribeProxyState(itemId.Value));
+
+                // If something else (e.g. Marketbuddy's auto Compare Prices) already requested the listings for this
+                // sell window, use that request instead of sending a second one. A second request resets the game's
+                // listing data, and its response can be delayed or never arrive.
+                // (ItemSearchResult is closed after every item, so an open one belongs to this sell window.)
+                var existingListingCount = searchResultOpen ? MarketBoardService.GetCurrentRequestListingCount(itemId) : null;
+                if (existingListingCount > 0)
+                {
+                    _existingRequestWaitStartedAt = null;
+                    _marketBoardService.BeginRequest(itemId, sellingHq, undercutHqOnly, adoptExistingRequest: true);
+                    Infrastructure.Monitoring.MarketDiagnosticsService.Log(
+                        $"Using the existing market board request for item {itemId} ({existingListingCount} listings); not firing Compare Prices");
+                    return true;
+                }
+
+                if (existingListingCount == 0)
+                {
+                    // The request was sent but its first batch has not arrived yet; give it a moment
+                    _existingRequestWaitStartedAt ??= DateTime.UtcNow;
+                    if ((DateTime.UtcNow - _existingRequestWaitStartedAt.Value).TotalMilliseconds < ExistingRequestWaitMs)
+                        return false;
+                    Infrastructure.Monitoring.MarketDiagnosticsService.Log(
+                        $"Existing market board request for item {itemId} has no listings after {ExistingRequestWaitMs}ms; sending our own");
+                }
+                _existingRequestWaitStartedAt = null;
+
                 // Notify MarketBoardService that we're starting a request
                 _marketBoardService.BeginRequest(itemId, sellingHq, undercutHqOnly);
 
                 // Click "Compare Prices" button (callback 4)
                 ECommons.Automation.Callback.Fire(&addon->AtkUnitBase, true, 4);
+                Infrastructure.Monitoring.MarketDiagnosticsService.Log($"Fired Compare Prices (callback 4) for item {itemId}");
                 return true;
             }
             return false;
