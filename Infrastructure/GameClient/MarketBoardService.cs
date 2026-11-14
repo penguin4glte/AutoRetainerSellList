@@ -29,6 +29,7 @@ public unsafe class MarketBoardService : IDisposable
     private bool _undercutHqOnly;
     private int _eventBatchCount;
     private readonly Dictionary<ulong, string> _eventRetainerNames = new();
+    private readonly Dictionary<ulong, MarketListing> _eventListings = new();
     private DateTime _requestStartedAt;
     private DateTime _lastChangeAt;
     private uint _lastSeenListingCount;
@@ -49,6 +50,7 @@ public unsafe class MarketBoardService : IDisposable
             _undercutHqOnly = undercutHqOnly;
             _eventBatchCount = 0;
             _eventRetainerNames.Clear();
+            _eventListings.Clear();
             _requestStartedAt = DateTime.UtcNow;
             _lastChangeAt = DateTime.UtcNow;
             _lastSeenListingCount = uint.MaxValue;
@@ -93,17 +95,28 @@ public unsafe class MarketBoardService : IDisposable
                 // even after all listings have been received.)
                 var fresh = _eventBatchCount > 0;
                 var stable = (now - _lastChangeAt).TotalMilliseconds >= QuietPeriodMs;
+                // The game only fills ListingCount after all batches have arrived, so while it is still 0 the
+                // listings may still be loading (the server can pause >300ms between batches). Only treat 0 as
+                // final when the event also received no listings (nobody is selling the item).
+                var gameDataReady = listingCount > 0 || _eventListings.Count == 0;
 
-                if (!(proxyMatches && fresh && stable))
+                if (!(proxyMatches && fresh && stable && gameDataReady))
                 {
                     if (elapsedMs < timeoutMs)
                         return false;
 
                     Svc.Log.Error(
                         $"[MarketBoardService] TIMEOUT waiting for market board price for item {itemId} after {timeoutMs}ms " +
-                        $"(proxy item: {(proxy != null ? proxy->SearchItemId : 0)}, listings: {listingCount}, event batches: {_eventBatchCount})");
-                    _currentRequestItemId = null;
-                    return null;
+                        $"(proxy item: {(proxy != null ? proxy->SearchItemId : 0)}, listings: {listingCount}, event batches: {_eventBatchCount}, " +
+                        $"event listings: {_eventListings.Count})");
+
+                    // Game data never arrived; fall back to the event listings if there are any
+                    // (handled in CalculateSellingPrice when no game data listings match)
+                    if (proxy == null || !fresh || _eventListings.Count == 0)
+                    {
+                        _currentRequestItemId = null;
+                        return null;
+                    }
                 }
 
                 sellingPrice = CalculateSellingPrice(proxy, itemId);
@@ -151,8 +164,23 @@ public unsafe class MarketBoardService : IDisposable
 
         if (listings.Count == 0)
         {
-            Svc.Log.Warning($"[MarketBoardService] No market board listings found for item {itemId}");
-            return null;
+            LogProxyDiagnostics(proxy, itemId);
+
+            if (_eventListings.Count == 0)
+            {
+                Svc.Log.Warning($"[MarketBoardService] No market board listings found for item {itemId}");
+                return null;
+            }
+
+            // The game data could not be read for this request. Fall back to the listings received via the
+            // Dalamud event. They may miss some batches, which can only make the reference price higher
+            // (never lower) than the true lowest listing, so this never lists at a dangerously low price.
+            Svc.Log.Warning(
+                $"[MarketBoardService] No listings in game data for item {itemId}; " +
+                $"falling back to {_eventListings.Count} listings received via event");
+            listings = _eventListings
+                .Select(kv => (kv.Value, _eventRetainerNames.GetValueOrDefault(kv.Key, "?") + ", via event"))
+                .ToList();
         }
 
         var reference = _pricingStrategy.SelectReferenceListing(listings.Select(l => l.Listing), _sellingHq, _undercutHqOnly);
@@ -168,6 +196,25 @@ public unsafe class MarketBoardService : IDisposable
             $"overall lowest {listings.Min(l => l.Listing.PricePerUnit)} gil, listings: {listings.Count} -> selling price {sellingPrice.Value} gil");
 
         return sellingPrice;
+    }
+
+    // Caller must hold _lock
+    private static void LogProxyDiagnostics(InfoProxyItemSearch* proxy, ItemId itemId)
+    {
+        var raw = new List<string>();
+        for (var i = 0; i < proxy->Listings.Length && raw.Count < 5; i++)
+        {
+            ref var l = ref proxy->Listings[i];
+            if (l.ListingId == 0)
+                continue;
+            raw.Add($"[{i}] id={l.ListingId:X} item={l.ItemId} price={l.UnitPrice} qty={l.Quantity} hq={l.IsHqItem}");
+        }
+
+        Svc.Log.Warning(
+            $"[MarketBoardService] Game data diagnostics for item {itemId}: SearchItemId={proxy->SearchItemId}, " +
+            $"ListingCount={proxy->ListingCount}, EntryCount={proxy->InfoProxyPageInterface.InfoProxyInterface.EntryCount}, " +
+            $"WaitingForListings={proxy->WaitingForListings}, RequestId={proxy->CurrentRequestId}/{proxy->NextRequestId}, " +
+            $"non-empty slots: {(raw.Count == 0 ? "none" : string.Join("; ", raw))}");
     }
 
     private void OnMarketBoardOfferingsReceived(IMarketBoardCurrentOfferings currentOfferings)
@@ -190,7 +237,11 @@ public unsafe class MarketBoardService : IDisposable
                     }
 
                     foreach (var listing in currentOfferings.ItemListings)
+                    {
                         _eventRetainerNames[listing.ListingId] = listing.RetainerName;
+                        _eventListings[listing.ListingId] = new MarketListing(
+                            (int)Math.Clamp(listing.PricePerUnit, 1u, (uint)int.MaxValue), listing.IsHq);
+                    }
                 }
 
                 _eventBatchCount++;
